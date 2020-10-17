@@ -254,7 +254,10 @@ modifying the profile file{plural} located at:
 
 
 PRE_MESSAGE_FISH = """This path will then be added to your `PATH` environment variable by
-modifying the `fish_user_paths` universal variable."""
+modifying the `fish_user_paths` universal variable and, for other shells,
+the profile file{plural} located at:
+
+{rcfiles}"""
 
 PRE_MESSAGE_WINDOWS = """This path will then be added to your `PATH` environment variable by
 modifying the `HKEY_CURRENT_USER/Environment/PATH` registry key."""
@@ -714,11 +717,12 @@ class Installer:
         if not self._modify_path:
             return
 
-        if "fish" in SHELL:
-            return self.add_to_fish_path()
-
         if WINDOWS:
-            return self.add_to_windows_path()
+            self.add_to_windows_path()
+            return
+
+        if "fish" in SHELL:
+            self.add_to_fish_path()
 
         # Updating any profile we can on UNIX systems
         export_string = self.get_export_string()
@@ -765,7 +769,7 @@ class Installer:
             print(
                 colorize(
                     "warning",
-                    "\nPATH already contains {} and thus was not modified.".format(
+                    "\nPATH already contains {} and thus `fish_user_paths` was not modified.".format(
                         POETRY_BIN
                     ),
                 )
@@ -925,16 +929,16 @@ class Installer:
         if not self._modify_path:
             kwargs["platform_msg"] = PRE_MESSAGE_NO_MODIFY_PATH
         else:
-            if "fish" in SHELL:
-                kwargs["platform_msg"] = PRE_MESSAGE_FISH
-            elif WINDOWS:
+            if WINDOWS:
                 kwargs["platform_msg"] = PRE_MESSAGE_WINDOWS
             else:
                 profiles = [
                     colorize("comment", p.replace(os.getenv("HOME", ""), "$HOME"))
                     for p in self.get_unix_profiles()
                 ]
-                kwargs["platform_msg"] = PRE_MESSAGE_UNIX.format(
+
+                base_msg = PRE_MESSAGE_FISH if "fish" in SHELL else PRE_MESSAGE_UNIX
+                kwargs["platform_msg"] = base_msg.format(
                     rcfiles="\n".join(profiles), plural="s" if len(profiles) > 1 else ""
                 )
 
